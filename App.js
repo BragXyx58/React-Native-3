@@ -9,13 +9,15 @@ import {
   Image,
   Switch,
   StatusBar as RNStatusBar,
-  Platform
+  Platform,
+  ScrollView
 } from 'react-native';
 
 const cartIconImage = require('./image_1.png');
 
 export default function App() {
   const [products, setProducts] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
@@ -51,6 +53,71 @@ export default function App() {
     setProducts(products.filter(p => p.id !== id));
   };
 
+    if (selectedProduct) {
+    return (
+      <View style={styles.safeArea}>
+        <ScrollView style={{ flex: 1 }}>
+          <View style={styles.detailsContainer}>
+
+            <Text style={styles.detailsTitle}>
+              {selectedProduct.name}
+            </Text>
+
+            <Text style={styles.rating}>
+              ⭐⭐⭐⭐⭐ {selectedProduct.reviews} 3478 отзывов
+            </Text>
+
+            {selectedProduct.isSmart && (
+              <View style={styles.smartBadgeLarge}>
+                <Text style={styles.smartText}>SMART</Text>
+              </View>
+            )}
+
+            <Image
+              source={{ uri: selectedProduct.image }}
+              style={styles.detailsImage}
+            />
+
+            <Text style={styles.stock}>Є в наявності</Text>
+
+            {selectedProduct.oldPrice ? (
+              <Text style={styles.oldPriceLarge}>
+                {selectedProduct.oldPrice} ₴
+              </Text>
+            ) : null}
+
+            <Text
+              style={[
+                styles.priceLarge,
+                { color: selectedProduct.oldPrice ? '#f84147' : '#222' }
+              ]}
+            >
+              {selectedProduct.price} ₴
+            </Text>
+
+            {selectedProduct.isFreeShipping && (
+              <Text style={styles.shippingLarge}>
+                Бесплатная доставка
+              </Text>
+            )}
+
+            <TouchableOpacity style={styles.buyButton}>
+              <Text style={styles.buyText}>Купити</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setSelectedProduct(null)}
+            >
+              <Text style={{ color: '#fff' }}>Закрыть</Text>
+            </TouchableOpacity>
+
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.safeArea}>
       <View style={styles.container}>
@@ -66,7 +133,7 @@ export default function App() {
           />
 
           <TextInput
-            placeholder="Цена (грн)"
+            placeholder="Цена"
             value={price}
             onChangeText={setPrice}
             keyboardType="numeric"
@@ -99,7 +166,7 @@ export default function App() {
           </View>
 
           <TouchableOpacity style={styles.addButton} onPress={addProduct}>
-            <Text style={styles.addButtonText}>ДОБАВИТЬ В КАТАЛОГ</Text>
+            <Text style={styles.addButtonText}>Добавить</Text>
           </TouchableOpacity>
         </View>
 
@@ -107,30 +174,19 @@ export default function App() {
           data={products}
           numColumns={2}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: 6 }}
           renderItem={({ item }) => (
-            <View style={styles.card}>
-
-              <TouchableOpacity
-                style={styles.deleteTag}
-                onPress={() => deleteProduct(item.id)}
-              >
-                <Text style={styles.deleteText}>Удалить</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.heartIcon}>
-                <Text style={styles.heartText}>♡</Text>
-              </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => setSelectedProduct(item)}
+              activeOpacity={0.9}
+            >
 
               <Image
                 source={{ uri: item.image }}
                 style={styles.productImage}
               />
 
-              <Text
-                style={styles.productName}
-                numberOfLines={2}
-              >
+              <Text numberOfLines={2} style={styles.productName}>
                 {item.name}
               </Text>
 
@@ -172,7 +228,7 @@ export default function App() {
                 )}
               </View>
 
-            </View>
+            </TouchableOpacity>
           )}
         />
 
@@ -188,14 +244,11 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? RNStatusBar.currentHeight : 0,
   },
 
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
 
   form: {
     padding: 16,
     backgroundColor: '#fff',
-    marginBottom: 10,
   },
 
   header: {
@@ -210,7 +263,6 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
     borderRadius: 6,
-    backgroundColor: '#fafafa',
   },
 
   switchRow: {
@@ -221,9 +273,8 @@ const styles = StyleSheet.create({
 
   addButton: {
     backgroundColor: '#00a046',
-    padding: 14,
+    padding: 12,
     borderRadius: 6,
-    marginTop: 8,
     alignItems: 'center',
   },
 
@@ -241,47 +292,22 @@ const styles = StyleSheet.create({
     maxWidth: '48%',
   },
 
-  deleteTag: {
-    position: 'absolute',
-    left: 8,
-    top: 8,
-    zIndex: 1,
-  },
-
-  deleteText: {
-    fontSize: 12,
-    color: '#f84147',
-  },
-
-  heartIcon: {
-    position: 'absolute',
-    right: 8,
-    top: 6,
-  },
-
-  heartText: {
-    fontSize: 20,
-    color: '#ffa500',
-  },
-
   productImage: {
     width: '100%',
     height: 120,
     resizeMode: 'contain',
-    marginTop: 18,
     marginBottom: 6,
   },
 
   productName: {
     fontSize: 14,
-    height: 36,
-    marginBottom: 6,
+    marginBottom: 4,
   },
 
   oldPrice: {
-    fontSize: 13,
-    color: '#999',
     textDecorationLine: 'line-through',
+    color: '#999',
+    fontSize: 12,
   },
 
   priceRow: {
@@ -292,7 +318,7 @@ const styles = StyleSheet.create({
   },
 
   productPrice: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
   },
 
@@ -301,24 +327,22 @@ const styles = StyleSheet.create({
   },
 
   cartIcon: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
     resizeMode: 'contain',
   },
 
   bottomRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
     flexWrap: 'wrap',
-    marginTop: 4,
   },
 
   shippingText: {
     fontSize: 12,
     color: '#00a046',
     flex: 1,
-    paddingRight: 6,
   },
 
   smartBadge: {
@@ -330,6 +354,84 @@ const styles = StyleSheet.create({
 
   smartText: {
     fontSize: 10,
+    fontWeight: 'bold',
+  },
+
+   detailsContainer: {
+    padding: 16,
+    backgroundColor: '#fff',
+  },
+
+  detailsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+
+  rating: {
+    marginBottom: 8,
+  },
+
+  detailsImage: {
+    width: '100%',
+    height: 250,
+    resizeMode: 'contain',
+    marginVertical: 12,
+  },
+
+  priceLarge: {
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+
+  oldPriceLarge: {
+    textDecorationLine: 'line-through',
+    color: '#999',
+  },
+
+  stock: {
+    color: '#00a046',
+    marginBottom: 6,
+  },
+
+  shippingLarge: {
+    color: '#00a046',
+    marginVertical: 6,
+  },
+
+  buyButton: {
+    backgroundColor: '#00a046',
+    padding: 14,
+    borderRadius: 6,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+
+  buyText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+
+  closeButton: {
+    marginTop: 12,
+    backgroundColor: '#333',
+    padding: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+
+  smartBadgeLarge: {
+    backgroundColor: '#ffdb00',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 2,
+    marginBottom: 6,
+  },
+
+  smartText: {
+    fontSize: 12,
     fontWeight: 'bold',
   },
 });
