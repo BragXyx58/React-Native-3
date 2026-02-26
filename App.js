@@ -12,10 +12,11 @@ import {
   Platform,
   ScrollView
 } from 'react-native';
-
+import { Picker } from '@react-native-picker/picker';
 const cartIconImage = require('./image_1.png');
 
 export default function App() {
+
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
@@ -25,6 +26,71 @@ export default function App() {
   const [imageUrl, setImageUrl] = useState('');
   const [isFreeShipping, setIsFreeShipping] = useState(false);
   const [isSmart, setIsSmart] = useState(false);
+
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
+
+  const [cart, setCart] = useState([]);
+
+  const [areas, setAreas] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [warehouses, setWarehouses] = useState([]);
+
+  const [selectedArea, setSelectedArea] = useState(null);
+  const [selectedCity, setSelectedCity] = useState(null);
+  const [selectedWarehouse, setSelectedWarehouse] = useState(null);
+
+  const API_KEY = "NOVA POST API KEY";
+
+  const fetchAreas = async () => {
+    const res = await fetch("https://api.novaposhta.ua/v2.0/json/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        apiKey: API_KEY,
+        modelName: "Address",
+        calledMethod: "getAreas",
+        methodProperties: {}
+      })
+    });
+    const data = await res.json();
+    setAreas(data.data);
+  };
+
+  const fetchCities = async (areaRef) => {
+    const res = await fetch("https://api.novaposhta.ua/v2.0/json/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        apiKey: API_KEY,
+        modelName: "Address",
+        calledMethod: "getCities",
+        methodProperties: { AreaRef: areaRef }
+      })
+    });
+    const data = await res.json();
+    setCities(data.data);
+  };
+
+  const fetchWarehouses = async (cityRef) => {
+    const res = await fetch("https://api.novaposhta.ua/v2.0/json/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        apiKey: API_KEY,
+        modelName: "Address",
+        calledMethod: "getWarehouses",
+        methodProperties: { CityRef: cityRef }
+      })
+    });
+    const data = await res.json();
+    setWarehouses(data.data);
+  };
 
   const addProduct = () => {
     if (!name || !price) return;
@@ -37,6 +103,7 @@ export default function App() {
       image: imageUrl || 'https://via.placeholder.com/300x300.png?text=No+Image',
       isFreeShipping,
       isSmart,
+      isFavorite: false,
     };
 
     setProducts([...products, newProduct]);
@@ -53,69 +120,270 @@ export default function App() {
     setProducts(products.filter(p => p.id !== id));
   };
 
-    if (selectedProduct) {
+  const toggleFavorite = (id) => {
+    setProducts(products.map(p =>
+      p.id === id ? { ...p, isFavorite: !p.isFavorite } : p
+    ));
+  };
+  
+  const addToCart = (product) => {
+    setCart([...cart, product]);
+  };
+
+  const renderCheckout = () => {
     return (
       <View style={styles.safeArea}>
-        <ScrollView style={{ flex: 1 }}>
-          <View style={styles.detailsContainer}>
+        <ScrollView style={{ flex: 1, padding: 16 }}>
 
-            <Text style={styles.detailsTitle}>
-              {selectedProduct.name}
-            </Text>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 12 }}>
+            Оформление заказа
+          </Text>
 
-            <Text style={styles.rating}>
-              ⭐⭐⭐⭐⭐ {selectedProduct.reviews} 3478 отзывов
-            </Text>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={fetchAreas}
+          >
+            <Text style={styles.addButtonText}>Загрузить области</Text>
+          </TouchableOpacity>
 
-            {selectedProduct.isSmart && (
-              <View style={styles.smartBadgeLarge}>
-                <Text style={styles.smartText}>SMART</Text>
-              </View>
-            )}
-
-            <Image
-              source={{ uri: selectedProduct.image }}
-              style={styles.detailsImage}
-            />
-
-            <Text style={styles.stock}>Є в наявності</Text>
-
-            {selectedProduct.oldPrice ? (
-              <Text style={styles.oldPriceLarge}>
-                {selectedProduct.oldPrice} ₴
-              </Text>
-            ) : null}
-
-            <Text
-              style={[
-                styles.priceLarge,
-                { color: selectedProduct.oldPrice ? '#f84147' : '#222' }
-              ]}
+          {areas.length > 0 && (
+            <View style={styles.pickerContainer}>
+            <Picker
+              style={styles.picker}
+              selectedValue={selectedArea?.Ref}
+              onValueChange={(value) => {
+                const area = areas.find(a => a.Ref === value);
+                setSelectedArea(area);
+                fetchCities(value);
+              }}
             >
-              {selectedProduct.price} ₴
-            </Text>
-
-            {selectedProduct.isFreeShipping && (
-              <Text style={styles.shippingLarge}>
-                Бесплатная доставка
-              </Text>
-            )}
-
-            <TouchableOpacity style={styles.buyButton}>
-              <Text style={styles.buyText}>Купити</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setSelectedProduct(null)}
-            >
-              <Text style={{ color: '#fff' }}>Закрыть</Text>
-            </TouchableOpacity>
-
+              <Picker.Item label="Выберите область" value={null} color="#999" />
+              {areas.map(area => (
+                <Picker.Item
+                  key={area.Ref}
+                  label={area.Description}
+                  value={area.Ref}
+                />
+              ))}
+            </Picker>
           </View>
+        )}
+
+          {cities.length > 0 && (
+            <View style={styles.pickerContainer}>
+            <Picker
+              style={styles.picker}
+              selectedValue={selectedCity?.Ref}
+              onValueChange={(value) => {
+                const city = cities.find(c => c.Ref === value);
+                setSelectedCity(city);
+                fetchWarehouses(value);
+              }}
+            >
+              <Picker.Item label="Выберите город" value={null} color="#999" />
+              {cities.map(city => (
+                <Picker.Item
+                  key={city.Ref}
+                  label={city.Description}
+                  value={city.Ref}
+                />
+              ))}
+            </Picker>
+          </View>
+        )}
+
+          {warehouses.length > 0 && (
+            <View style={styles.pickerContainer}>
+            <Picker
+              style={styles.picker}
+              selectedValue={selectedWarehouse?.Ref}
+              onValueChange={(value) => {
+                const w = warehouses.find(w => w.Ref === value);
+                setSelectedWarehouse(w);
+              }}
+            >
+              <Picker.Item label="Выберите отделение" value={null} color="#999" />
+              {warehouses.map(w => (
+                <Picker.Item
+                  key={w.Ref}
+                  label={w.Description}
+                  value={w.Ref}
+                />
+              ))}
+            </Picker>
+          </View>
+        )}
+
+          <TouchableOpacity
+            style={styles.buyButton}
+            onPress={() => {
+              alert("Заказ оформлен!");
+              setCart([]);
+              setIsCheckoutOpen(false);
+              setIsCartOpen(false);
+            }}
+          >
+            <Text style={styles.buyText}>Подтвердить заказ</Text>
+          </TouchableOpacity>
+
         </ScrollView>
       </View>
     );
+  };
+
+  if (isCheckoutOpen) {
+    return renderCheckout();
+  }
+  
+  const renderCart = () => {
+    const total = cart.reduce((sum, item) => sum + Number(item.price), 0);
+
+    return (
+      <View style={styles.safeArea}>
+        <ScrollView style={{ flex: 1, padding: 16 }}>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 12 }}>
+            Корзина
+          </Text>
+
+          {cart.length === 0 ? (
+            <Text>Корзина пуста</Text>
+          ) : (
+            cart.map(item => (
+              <View
+                key={item.id}
+                style={{
+                  backgroundColor: '#fff',
+                  padding: 10,
+                  marginBottom: 8,
+                  borderRadius: 6
+                }}
+              >
+                <Text>{item.name}</Text>
+                <Text>{item.price} ₴</Text>
+              </View>
+            ))
+          )}
+
+          <Text style={{ fontSize: 18, marginVertical: 12 }}>
+            Итого: {total} ₴
+          </Text>
+
+          <TouchableOpacity
+            style={styles.buyButton}
+            onPress={() => {
+              setIsCartOpen(false);
+              setIsCheckoutOpen(true);
+            }}
+          >
+            <Text style={styles.buyText}>Оформить заказ</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setIsCartOpen(false)}
+          >
+            <Text style={{ color: '#fff' }}>Назад</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  };
+
+  const renderProfile = () => {
+    const favoriteProducts = products.filter(p => p.isFavorite);
+
+    return (
+      <View style={styles.safeArea}>
+        <ScrollView style={{ flex: 1, padding: 16 }}>
+
+          <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 12 }}>
+            Профиль пользователя
+          </Text>
+
+          <TextInput
+            placeholder="ФИО"
+            value={fullName}
+            onChangeText={setFullName}
+            style={styles.input}
+          />
+
+          <TextInput
+            placeholder="Почта"
+            value={email}
+            onChangeText={setEmail}
+            style={styles.input}
+          />
+
+          <TextInput
+            placeholder="Частый адрес доставки"
+            value={address}
+            onChangeText={setAddress}
+            style={styles.input}
+          />
+
+          <Text style={{ fontSize: 18, marginVertical: 12 }}>
+            Избранное
+          </Text>
+
+          {favoriteProducts.length === 0 ? (
+            <Text>Нет избранных товаров</Text>
+          ) : (
+            favoriteProducts.map(item => (
+              <View
+                key={item.id}
+                style={{
+                  backgroundColor: '#fff',
+                  padding: 10,
+                  marginBottom: 8,
+                  borderRadius: 6,
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <View>
+                  <Text style={{ fontWeight: 'bold' }}>
+                    {item.name}
+                  </Text>
+                  <Text>{item.price} ₴</Text>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => toggleFavorite(item.id)}
+                  style={{
+                    backgroundColor: '#f84147',
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: 4
+                  }}
+                >
+                  <Text style={{ color: '#fff' }}>
+                    Убрать
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setIsProfileOpen(false)}
+          >
+            <Text style={{ color: '#fff' }}>Назад</Text>
+          </TouchableOpacity>
+
+        </ScrollView>
+      </View>
+    );
+  };
+
+
+  if (isCartOpen) {
+    return renderCart();
+  }
+
+  if (isProfileOpen) {
+    return renderProfile();
   }
 
   return (
@@ -169,7 +437,20 @@ export default function App() {
             <Text style={styles.addButtonText}>Добавить</Text>
           </TouchableOpacity>
         </View>
-
+        <TouchableOpacity
+          style={{ padding: 10, backgroundColor: '#222', alignItems: 'center' }}
+          onPress={() => setIsProfileOpen(true)}
+        >
+          <Text style={{ color: '#fff' }}>Профиль</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ padding: 10, backgroundColor: '#f84147', alignItems: 'center' }}
+          onPress={() => setIsCartOpen(true)}
+        >
+          <Text style={{ color: '#fff' }}>
+            Корзина ({cart.length})
+          </Text>
+        </TouchableOpacity>
         <FlatList
           data={products}
           numColumns={2}
@@ -180,7 +461,14 @@ export default function App() {
               onPress={() => setSelectedProduct(item)}
               activeOpacity={0.9}
             >
-
+            <TouchableOpacity
+              style={{ position: 'absolute', right: 8, top: 8, zIndex: 1 }}
+              onPress={() => toggleFavorite(item.id)}
+            >
+              <Text style={{ fontSize: 20 }}>
+                {item.isFavorite ? '❤️' : '🤍'}
+              </Text>
+            </TouchableOpacity>
               <Image
                 source={{ uri: item.image }}
                 style={styles.productImage}
@@ -206,7 +494,10 @@ export default function App() {
                   {item.price} ₴
                 </Text>
 
-                <TouchableOpacity style={styles.cartButton}>
+                <TouchableOpacity
+                  style={styles.cartButton}
+                  onPress={() => addToCart(item)}
+                >
                   <Image
                     source={cartIconImage}
                     style={styles.cartIcon}
@@ -231,7 +522,7 @@ export default function App() {
             </TouchableOpacity>
           )}
         />
-
+      
       </View>
     </View>
   );
@@ -429,9 +720,18 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     marginBottom: 6,
   },
-
-  smartText: {
-    fontSize: 12,
-    fontWeight: 'bold',
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    backgroundColor: '#fff',
+    marginBottom: 12,
+    overflow: 'hidden', 
+    justifyContent: 'center',
+  },
+  picker: {
+    height: 50,
+    width: '100%',
+    color: '#333',
   },
 });
